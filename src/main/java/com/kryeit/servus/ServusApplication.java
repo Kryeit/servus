@@ -10,4 +10,5 @@ public class ServusApplication {
         SpringApplication.run(ServusApplication.class, args);
     }
 
+
 }

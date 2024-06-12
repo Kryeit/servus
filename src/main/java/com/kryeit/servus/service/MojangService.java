@@ -1,5 +1,6 @@
 package com.kryeit.servus.service;
 
+import lombok.Getter;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
@@ -47,19 +48,15 @@ public class MojangService {
         }
     }
 
+    @Getter
     private static class MojangProfile {
         private String name;
 
-        public String getName() {
-            return name;
-        }
     }
 
+    @Getter
     private static class MojangUUIDProfile {
         private String id;
 
-        public String getId() {
-            return id;
-        }
     }
 }
