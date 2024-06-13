@@ -36,21 +36,43 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<String> registerUser(@RequestParam String uuidString, @RequestParam String password) {
-        UUID uuid = UUID.fromString(uuidString);
-        if (userRepository.existsById(uuid)) {
-            return ResponseEntity.badRequest().body("UUID is already registered");
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(uuidString);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid UUID format");
         }
+
+        if (userRepository.existsById(uuid)) {
+            return ResponseEntity.badRequest().body("Username is already registered");
+        }
+
         String username = mojangService.getMinecraftUsername(uuid);
+        if (username == null || username.isEmpty()) {
+            return ResponseEntity.badRequest().body("No Minecraft username found");
+        }
+
         User user = new User(uuid, passwordEncoder.encode(password));
         userRepository.save(user);
-        return ResponseEntity.ok("User registered successfully with username: " + username);
+        return ResponseEntity.ok( username + " registered successfully");
     }
 
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@RequestParam String uuidString, @RequestParam String password) {
-        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(uuidString, password);
-        Authentication authentication = authenticationManager.authenticate(token);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-        return ResponseEntity.ok("Login successful");
+        UUID uuid;
+        try {
+            uuid = UUID.fromString(uuidString);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid UUID format");
+        }
+
+        UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(uuid.toString(), password);
+        try {
+            Authentication authentication = authenticationManager.authenticate(token);
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+            return ResponseEntity.ok("Login successful");
+        } catch (Exception e) {
+            return ResponseEntity.status(401).body("Invalid credentials");
+        }
     }
 }
