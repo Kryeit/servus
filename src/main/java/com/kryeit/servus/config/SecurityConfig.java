@@ -7,31 +7,33 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     private final MyUserDetailsService userDetailsService;
+    private final AuthenticationConfiguration authenticationConfiguration;
 
-    public SecurityConfig(MyUserDetailsService userDetailsService) {
+    public SecurityConfig(MyUserDetailsService userDetailsService, AuthenticationConfiguration authenticationConfiguration) {
         this.userDetailsService = userDetailsService;
+        this.authenticationConfiguration = authenticationConfiguration;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Updated to the new method
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form.permitAll())
-                .logout(logout -> logout.permitAll());
+                .addFilterBefore(customAuthenticationFilter(authenticationManager(authenticationConfiguration)), UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 
@@ -43,5 +45,12 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
         return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public CustomAuthenticationFilter customAuthenticationFilter(AuthenticationManager authenticationManager) {
+        CustomAuthenticationFilter filter = new CustomAuthenticationFilter();
+        filter.setAuthenticationManager(authenticationManager);
+        return filter;
     }
 }

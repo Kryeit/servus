@@ -2,13 +2,16 @@ package com.kryeit.servus.service;
 
 import com.kryeit.servus.auth.User;
 import com.kryeit.servus.auth.UserRepository;
+import org.springframework.security.core.userdetails.User.UserBuilder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.Optional;
 import java.util.UUID;
+
+import static org.springframework.security.core.userdetails.User.withUsername;
 
 @Service
 public class MyUserDetailsService implements UserDetailsService {
@@ -20,21 +23,22 @@ public class MyUserDetailsService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String uuid) throws UsernameNotFoundException {
-        UUID userUuid;
+    public UserDetails loadUserByUsername(String uuidString) throws UsernameNotFoundException {
+        UUID uuid;
         try {
-            userUuid = UUID.fromString(uuid);
+            uuid = UUID.fromString(uuidString);
         } catch (IllegalArgumentException e) {
-            throw new UsernameNotFoundException("Invalid UUID format");
+            throw new UsernameNotFoundException("Invalid UUID string: " + uuidString, e);
         }
 
-        User user = userRepository.findById(userUuid)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
-
-        return new org.springframework.security.core.userdetails.User(
-                user.getId().toString(),
-                user.getPassword(),
-                new ArrayList<>()
-        );
+        Optional<User> userOptional = userRepository.findById(uuid);
+        if (!userOptional.isPresent()) {
+            throw new UsernameNotFoundException("User not found");
+        }
+        User user = userOptional.get();
+        UserBuilder builder = withUsername(uuidString);
+        builder.password(user.getPassword());
+        builder.roles("USER");
+        return builder.build();
     }
 }
