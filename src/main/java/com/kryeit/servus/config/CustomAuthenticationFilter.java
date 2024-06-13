@@ -19,7 +19,7 @@ public class CustomAuthenticationFilter extends AbstractAuthenticationProcessing
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public CustomAuthenticationFilter() {
-        super(new AntPathRequestMatcher("/api/auth/login", "POST"));
+        super(new AntPathRequestMatcher("/auth/login", "POST"));
     }
 
     @Override

@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "com.kryeit"
-version = "0.0.1-SNAPSHOT"
+version = ""
 java.sourceCompatibility = JavaVersion.VERSION_17
 
 
