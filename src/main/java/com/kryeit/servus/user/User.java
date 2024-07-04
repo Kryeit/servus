@@ -26,7 +26,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 public class User implements UserDetails {
 
   @Id
-  @GeneratedValue
   private String uuid;
   private String password;
 
