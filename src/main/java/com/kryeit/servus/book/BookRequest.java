@@ -7,9 +7,10 @@ import lombok.Setter;
 @Getter
 @Setter
 @Builder
-public class BookRequest {
+public class BookRequest
+{
 
-    private Integer id;
-    private String author;
-    private String isbn;
+  private Integer id;
+  private String author;
+  private String isbn;
 }

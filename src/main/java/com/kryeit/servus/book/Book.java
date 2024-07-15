@@ -9,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedBy;
@@ -23,34 +24,29 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Entity
 @EntityListeners(AuditingEntityListener.class)
-public class Book {
+public class Book
+{
 
-    @Id
-    @GeneratedValue
-    private Integer id;
-    private String author;
-    private String isbn;
+  @Id
+  @GeneratedValue
+  private Integer id;
+  private String author;
+  private String isbn;
 
-    @CreatedDate
-    @Column(
-            nullable = false,
-            updatable = false
-    )
-    private LocalDateTime createDate;
+  @CreatedDate
+  @Column(nullable = false, updatable = false)
+  private LocalDateTime createDate;
 
-    @LastModifiedDate
-    @Column(insertable = false)
-    private LocalDateTime lastModified;
+  @LastModifiedDate
+  @Column(insertable = false)
+  private LocalDateTime lastModified;
 
 
-    @CreatedBy
-    @Column(
-            nullable = false,
-            updatable = false
-    )
-    private Integer createdBy;
+  @CreatedBy
+  @Column(nullable = false, updatable = false)
+  private Integer createdBy;
 
-    @LastModifiedBy
-    @Column(insertable = false)
-    private Integer lastModifiedBy;
+  @LastModifiedBy
+  @Column(insertable = false)
+  private Integer lastModifiedBy;
 }

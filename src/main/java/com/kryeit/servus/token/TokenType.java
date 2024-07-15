@@ -1,5 +1,6 @@
 package com.kryeit.servus.token;
 
-public enum TokenType {
+public enum TokenType
+{
   BEARER
 }

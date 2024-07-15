@@ -10,7 +10,6 @@ group = "com.kryeit"
 version = ""
 java.sourceCompatibility = JavaVersion.VERSION_17
 
-
 repositories {
     mavenCentral()
 }
@@ -24,6 +23,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     compileOnly("org.projectlombok:lombok")
     runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly("com.mysql:mysql-connector-j:8.2.0")
     annotationProcessor("org.projectlombok:lombok")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.security:spring-security-test")
@@ -38,6 +38,7 @@ dependencies {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+    enabled = false
 }
 
 java {

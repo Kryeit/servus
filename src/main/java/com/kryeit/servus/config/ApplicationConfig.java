@@ -2,8 +2,10 @@ package com.kryeit.servus.config;
 
 import com.kryeit.servus.auditing.ApplicationAuditAware;
 import com.kryeit.servus.user.UserRepository;
+
 import jakarta.persistence.criteria.CriteriaBuilder;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.domain.AuditorAware;
@@ -18,18 +20,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 @RequiredArgsConstructor
-public class ApplicationConfig {
+public class ApplicationConfig
+{
 
   private final UserRepository repository;
 
   @Bean
-  public UserDetailsService userDetailsService() {
+  public UserDetailsService userDetailsService()
+  {
     return username -> repository.findByUuid(username)
-        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+                                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
   }
 
   @Bean
-  public AuthenticationProvider authenticationProvider() {
+  public AuthenticationProvider authenticationProvider()
+  {
     DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
     authProvider.setUserDetailsService(userDetailsService());
     authProvider.setPasswordEncoder(passwordEncoder());
@@ -37,17 +42,20 @@ public class ApplicationConfig {
   }
 
   @Bean
-  public AuditorAware<String> auditorAware() {
+  public AuditorAware<String> auditorAware()
+  {
     return new ApplicationAuditAware();
   }
 
   @Bean
-  public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+  public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception
+  {
     return config.getAuthenticationManager();
   }
 
   @Bean
-  public PasswordEncoder passwordEncoder() {
+  public PasswordEncoder passwordEncoder()
+  {
     return new BCryptPasswordEncoder();
   }
 

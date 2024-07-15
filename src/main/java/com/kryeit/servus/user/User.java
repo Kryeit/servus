@@ -1,19 +1,23 @@
 package com.kryeit.servus.user;
 
 import com.kryeit.servus.token.Token;
+import com.kryeit.servus.otp.Otp;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Column;
+
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+
+import lombok.*;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -22,7 +26,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "_user")
+@Table(name = "user")
 public class User implements UserDetails {
 
   @Id
@@ -34,6 +38,19 @@ public class User implements UserDetails {
 
   @OneToMany(mappedBy = "user")
   private List<Token> tokens;
+
+  @OneToMany(mappedBy = "user")
+  private List<Otp> otps;
+
+  public boolean verified;
+
+  @Column(updatable = false)
+  private LocalDateTime createdAt;
+
+  @PrePersist
+  protected void onCreate() {
+    this.createdAt = LocalDateTime.now();
+  }
 
   @Override
   public Collection<? extends GrantedAuthority> getAuthorities() {
@@ -69,4 +86,5 @@ public class User implements UserDetails {
   public boolean isEnabled() {
     return true;
   }
+
 }

@@ -1,6 +1,7 @@
 package com.kryeit.servus.token;
 
 import com.kryeit.servus.user.User;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,13 +21,14 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-public class Token {
+public class Token
+{
 
   @Id
   @GeneratedValue
   public Integer id;
 
-  @Column(unique = true)
+  @Column(unique = true, length = 1024)
   public String token;
 
   @Enumerated(EnumType.STRING)
