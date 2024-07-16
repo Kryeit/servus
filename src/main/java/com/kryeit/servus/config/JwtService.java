@@ -64,12 +64,6 @@ public class JwtService
       extraClaims.put("verified", isVerified);
     }
 
-    LocalDateTime creationDate = ((User) userDetails).getCreatedAt();
-
-    if (!extraClaims.containsKey("createdAt")) {
-      extraClaims.put("createdAt", creationDate.toInstant(ZoneOffset.UTC).toEpochMilli());
-    }
-
     Collection<? extends GrantedAuthority> authorities = userDetails.getAuthorities();
     List<String> roles = authorities.stream()
             .map(GrantedAuthority::getAuthority)
