@@ -20,6 +20,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.security.Principal;
 
 @Service
 @RequiredArgsConstructor
@@ -61,6 +62,14 @@ public class AuthenticationService
                                  .accessToken(jwtToken)
                                  .refreshToken(refreshToken)
                                  .build();
+  }
+
+  public void deleteAccount(DeleteRequest request)
+  {
+    var user = User.builder()
+            .uuid(request.getUuid())
+            .build();
+    repository.delete(user);
   }
 
   private void saveUserToken(User user, String jwtToken)

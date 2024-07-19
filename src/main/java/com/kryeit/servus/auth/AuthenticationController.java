@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.security.Principal;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -38,5 +39,10 @@ public class AuthenticationController
     service.refreshToken(request, response);
   }
 
+  @PostMapping("/delete")
+  public ResponseEntity<?> deleteAccount(@RequestBody DeleteRequest request) {
+    service.deleteAccount(request);
+    return ResponseEntity.ok().build();
+  }
 
 }
