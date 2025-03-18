@@ -1,75 +1,50 @@
 plugins {
-    id("org.springframework.boot") version "3.3.0"
-    id("io.spring.dependency-management") version "1.0.15.RELEASE"
-    kotlin("jvm") version "1.8.20"
-    kotlin("plugin.spring") version "1.8.20"
     id("java")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 
 group = "com.kryeit"
-version = ""
-java.sourceCompatibility = JavaVersion.VERSION_17
+version = "1.0"
 
 repositories {
     mavenCentral()
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-actuator")
-    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-    implementation("org.springframework.boot:spring-boot-starter-security")
-    implementation("org.springframework.boot:spring-boot-starter-web")
-    implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
-    compileOnly("org.projectlombok:lombok")
-    runtimeOnly("org.postgresql:postgresql")
-    annotationProcessor("org.projectlombok:lombok")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.springframework.security:spring-security-test")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    implementation("io.github.cdimascio:java-dotenv:5.2.2")
+    testImplementation(platform("org.junit:junit-bom:5.9.1"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
 
-    implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.1.0")
-    implementation("io.jsonwebtoken:jjwt-api:0.11.5")
-    implementation("io.jsonwebtoken:jjwt-impl:0.11.5")
-    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.11.5")
+    implementation("io.javalin:javalin:6.3.0")
+    implementation("org.slf4j:slf4j-simple:2.0.7")
 
+    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.json:json:20240303")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("org.jdbi:jdbi3-core:3.45.1")
+    implementation("org.jdbi:jdbi3-jackson2:3.45.1")
+    implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
+    implementation("com.zaxxer:HikariCP:5.1.0")
+    implementation("de.mkammerer.snowflake-id:snowflake-id:0.0.2")
+    implementation("io.javalin.community.ssl:ssl-plugin:6.3.0")
+    implementation("org.postgresql:postgresql:42.7.4")
+
+    implementation("com.auth0:java-jwt:4.4.0")
+    implementation("com.stripe:stripe-java:26.10.0")
+    implementation("org.mindrot:jbcrypt:0.4")
 }
 
-tasks.withType<Test> {
+tasks {
+    build {
+        dependsOn(shadowJar)
+    }
+}
+
+tasks.jar {
+    manifest {
+        attributes("Main-Class" to "com.kryeit.Main")
+    }
+}
+
+tasks.test {
     useJUnitPlatform()
-    enabled = false
-}
-
-java {
-    withSourcesJar()
-}
-
-tasks.withType<Jar> {
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-}
-
-kotlin {
-    jvmToolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
-}
-
-sourceSets {
-    main {
-        java {
-            srcDirs("src/main/java")
-        }
-        kotlin {
-            srcDirs("src/main/kotlin")
-        }
-    }
-    test {
-        java {
-            srcDirs("src/test/java")
-        }
-        kotlin {
-            srcDirs("src/test/kotlin")
-        }
-    }
 }
