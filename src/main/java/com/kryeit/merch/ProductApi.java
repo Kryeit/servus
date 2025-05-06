@@ -57,26 +57,30 @@ public class ProductApi {
      * @param ctx the Javalin HTTP context
      */
     public static void createProduct(Context ctx) {
-        handleSecurity(ctx);
+        String token = ctx.cookie("auth");
+
+        if (token == null) {
+            throw new UnauthorizedResponse("Auth token is missing");
+        }
+
+        AdminJwt.validateToken(token);
 
         JSONObject body = new JSONObject(ctx.body());
         String name = body.getString("name");
         String description = body.getString("description");
         long price = body.getLong("price");
-
-        String size = body.optString("size", "");
-        String color = body.optString("color", "");
-        String material = body.optString("material", "");
-        boolean virtual = body.optBoolean("virtual", false);
-        boolean listed = body.optBoolean("listed", true);
-
-        // Add timestamps
-        Timestamp now = new Timestamp(System.currentTimeMillis());
+        String size = body.optString("size", null);
+        String color = body.optString("color", null);
+        String material = body.optString("material", null);
+        String isVirtualParam = body.optString("virtual", null);
+        String isListedParam = body.optString("listed", null);
+        boolean virtual = isVirtualParam != null && isVirtualParam.equals("true");
+        boolean listed = isListedParam != null && isListedParam.equals("true");
 
         Product product = Database.getJdbi().withHandle(handle ->
                 handle.createUpdate("""
-                    INSERT INTO products (name, description, price, size, color, material, virtual, listed, created_at, updated_at)
-                    VALUES (:name, :description, :price, :size, :color, :material, :virtual, :listed, :created_at, :updated_at)
+                    INSERT INTO products (name, description, price, size, color, material, virtual, listed)
+                    VALUES (:name, :description, :price, :size, :color, :material, :virtual, :listed)
                     """)
                         .bind("name", name)
                         .bind("description", description)
@@ -86,9 +90,7 @@ public class ProductApi {
                         .bind("material", material)
                         .bind("virtual", virtual)
                         .bind("listed", listed)
-                        .bind("created_at", now)
-                        .bind("updated_at", now)
-                        .executeAndReturnGeneratedKeys("id", "name", "description", "price", "size", "color", "material", "virtual", "listed", "created_at", "updated_at")
+                        .executeAndReturnGeneratedKeys()
                         .mapTo(Product.class)
                         .one()
         );
@@ -138,10 +140,7 @@ public class ProductApi {
         boolean virtual = isVirtualParam != null && isVirtualParam.equals("true");
         boolean listed = isListedParam != null && isListedParam.equals("true");
 
-        // Always update the updated_at timestamp
-        Timestamp now = new Timestamp(System.currentTimeMillis());
-
-        StringBuilder sql = new StringBuilder("UPDATE products SET updated_at = :updated_at");
+        StringBuilder sql = new StringBuilder("UPDATE products SET edition = NOW()");
 
         if (name != null) {
             sql.append(", name = :name");
@@ -168,12 +167,11 @@ public class ProductApi {
             sql.append(", listed = :listed");
         }
         sql.append(" WHERE id = :id");
+        System.out.println(sql);
 
         Product product = Database.getJdbi().withHandle(handle -> {
             var update = handle.createUpdate(sql.toString())
-                    .bind("id", id)
-                    .bind("updated_at", now);
-
+                    .bind("id", id);
             if (name != null) update.bind("name", name);
             if (description != null) update.bind("description", description);
             if (price != null) update.bind("price", price);
@@ -185,8 +183,8 @@ public class ProductApi {
 
             update.execute();
             return handle.createQuery("""
-                SELECT id, name, description, price, size, color, material, virtual, listed, created_at, updated_at 
-                FROM products 
+                SELECT *
+                FROM products
                 WHERE id = :id
                 """)
                     .bind("id", id)
@@ -214,9 +212,9 @@ public class ProductApi {
      */
     public static void getProducts(Context ctx) {
         List<Product> products = Database.getJdbi().withHandle(handle -> handle.createQuery("""
-                SELECT id, name, description, price, size, color, material, virtual, listed
-                FROM products
-                """)
+            SELECT id, name, description, price, size, color, material, virtual, listed, creation, edition
+            FROM products
+            """)
                 .mapTo(Product.class)
                 .list());
 
@@ -236,7 +234,7 @@ public class ProductApi {
         long id = Utils.getIdFromPath(ctx);
 
         Product product = Database.getJdbi().withHandle(handle -> handle.createQuery("""
-                SELECT id, name, description, price, size, color, material, virtual, listed
+                SELECT id, name, description, price, size, color, material, virtual, listed, creation, edition
                 FROM products
                 WHERE id = :id
                 """)

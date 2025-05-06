@@ -1,7 +1,6 @@
 package com.kryeit;
 
 import com.kryeit.auth.LoginApi;
-import com.kryeit.cosmetics.CosmeticApi;
 import com.kryeit.merch.OrderApi;
 import com.kryeit.merch.ProductApi;
 import com.kryeit.merch.ProductStructureApi;
@@ -75,6 +74,7 @@ public class Main {
                     path("admin", () -> {
                         post("login", AdminLoginApi::login);
                         post("register", AdminLoginApi::register);
+                        post("validate", AdminLoginApi::validate);
                     });
 
                     path("login", () -> {
@@ -97,7 +97,6 @@ public class Main {
                     });
 
                     path("products", () -> {
-                        // Add new comprehensive endpoints
                         get("catalog", ProductStructureApi::getProductCatalog);
                         get("details", ProductStructureApi::getProductDetails);
 
@@ -118,15 +117,14 @@ public class Main {
                         get("{id}", OrderApi::getOrder);
                         get(OrderApi::getOrders);
 
-                        post("test", OrderApi::createTest);
-                        post(OrderApi::createOrder);
                         delete(OrderApi::deleteOrder);
-                        patch(OrderApi::updateOrder);
+                        patch(OrderApi::updateStatus);
                     });
 
                     path("payment", () -> {
                         post("create", PaymentApi::createPaymentIntent);
                         post("webhook", PaymentHandler::handleStripeWebhook);
+                        get("success", PaymentApi::handlePaymentSuccess);
                     });
 
                     path("assets", () -> {
@@ -137,20 +135,19 @@ public class Main {
                         get(ModPackApi::getModPack);
                     });
 
-                    path("cosmetics", () -> {
-                        before(CosmeticApi::validateRequest);
-                        get("cosmetic/{id}", CosmeticApi::getCosmeticData);
-                        path("player/{player}", () -> {
-                            post("equip", CosmeticApi::equipCosmetic);
-                            post("unequip", CosmeticApi::unequipCosmetic);
-                            get("wardrobe", CosmeticApi::getWardrobe);
-                        });
-                        get("equipped", CosmeticApi::getEquippedCosmetics);
-                    });
+                    //path("cosmetics", () -> {
+                    //                        before(CosmeticApi::validateRequest);
+                    //                        get("cosmetic/{id}", CosmeticApi::getCosmeticData);
+                    //                        path("player/{player}", () -> {
+                    //                            post("equip", CosmeticApi::equipCosmetic);
+                    //                            post("unequip", CosmeticApi::unequipCosmetic);
+                    //                            get("wardrobe", CosmeticApi::getWardrobe);
+                    //                        });
+                    //                        get("equipped", CosmeticApi::getEquippedCosmetics);
+                    //                    });
                 });
             });
         }).start();
-
         app.get("/api/products/images/{productName}/{index}", Main::serveImage);
     }
 

@@ -1,5 +1,6 @@
 package com.kryeit.stripe;
 
+import com.kryeit.Config;
 import com.kryeit.Database;
 import com.kryeit.auth.Jwt;
 import com.kryeit.merch.Product;
@@ -14,21 +15,11 @@ import java.util.*;
 
 public class PaymentApi {
 
-    /**
-     * HTTP POST Request to /api/payment/create
-     * Creates a new payment intent.
-     * @param ctx the Javalin HTTP context
-     * @throws StripeException if there is an error with the Stripe API
-     */
+
     public static void createPaymentIntent(Context ctx) throws StripeException {
-
         JSONObject body = new JSONObject(ctx.body());
-
         JSONObject cart = body.getJSONObject("cart");
-
         String currency = "eur";
-
-        // Extract additional order details
         String email = body.optString("email", "");
         String phone = body.optString("phone", "");
         String destination = body.optString("destination", "");
@@ -36,12 +27,15 @@ public class PaymentApi {
         if (Objects.equals(email, "") || Objects.equals(destination, "")) {
             throw new IllegalArgumentException("Email and destination are required");
         }
+        if (email.isBlank() || destination.isBlank()) {
+            throw new io.javalin.http.BadRequestResponse("Email and destination are required");
+        }
+
 
         if (!StockUtils.areAllProductsStocked(cart)) {
             throw new IllegalArgumentException("One or more products are out of stock");
         }
 
-        // Prepare Stripe line items from cart
         List<Map<String, Object>> lineItems = new ArrayList<>();
         boolean hasNonVirtualProduct = false;
         boolean hasVirtualProduct = false;
@@ -52,7 +46,7 @@ public class PaymentApi {
             int quantity = item.getInt("quantity");
 
             Product product = Database.getJdbi().withHandle(handle -> handle.createQuery("""
-            SELECT id, name, description, price, size, color, material, virtual, listed
+            SELECT *
             FROM products
             WHERE id = :id
             """)
@@ -82,7 +76,6 @@ public class PaymentApi {
             }
         }
 
-        // Add shipping fee if there is at least one non-virtual product
         if (hasNonVirtualProduct) {
             lineItems.add(Map.of(
                     "price_data", Map.of(
@@ -90,17 +83,14 @@ public class PaymentApi {
                             "product_data", Map.of(
                                     "name", "Shipping Fee"
                             ),
-                            "unit_amount", 1000 // 10€ in cents
+                            "unit_amount", 1000
                     ),
                     "quantity", 1
             ));
         }
 
-        // Prepare metadata for the payment intent
         Map<String, String> metadata = new HashMap<>();
-
         String token = ctx.cookie("auth");
-
         UUID uuid = Jwt.validateToken(token);
 
         if (token != null && uuid != null) {
@@ -109,29 +99,41 @@ public class PaymentApi {
             throw new UnauthorizedResponse("Authentication is required for virtual products");
         }
 
-        if (uuid != null) {
-            metadata.put("uuid", uuid.toString());
-        }
         metadata.put("cart", cart.toString());
         metadata.put("email", email);
         metadata.put("phone", phone);
         metadata.put("destination", destination);
 
-        // Create Checkout session parameters
         Map<String, Object> params = new HashMap<>();
         params.put("payment_method_types", List.of("card"));
         params.put("line_items", lineItems);
         params.put("mode", "payment");
-        params.put("success_url", "https://kryeit.com/orders");
-        params.put("cancel_url", "https://kryeit.com/store");
-        params.put("metadata", metadata); // Attach metadata to the session
+        params.put("success_url", Config.FRONTEND_DOMAIN + "/orders?checkout=success&session_id={CHECKOUT_SESSION_ID}");
+        params.put("cancel_url", Config.FRONTEND_DOMAIN + "/store");
+        params.put("metadata", metadata);
 
-        // Create the Checkout session
         Session session = Session.create(params);
+        ctx.json(Map.of("id", session.getId()));
+    }
 
-        // Return session ID
-        ctx.json(Map.of(
-                "id", session.getId()
-        ));
+    public static void handlePaymentSuccess(Context ctx) {
+        String sessionId = ctx.queryParam("session_id");
+        if (sessionId == null || sessionId.isEmpty()) {
+            ctx.status(400).result("Missing session ID");
+            return;
+        }
+
+        try {
+            Session session = Session.retrieve(sessionId);
+            if (!"complete".equals(session.getStatus())) {
+                ctx.status(400).result("Payment incomplete");
+                return;
+            }
+
+            // Don't create the order here - webhook will handle it
+            ctx.status(200).result("Payment verified");
+        } catch (Exception e) {
+            ctx.status(500).result("Error verifying payment: " + e.getMessage());
+        }
     }
 }

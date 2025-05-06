@@ -1,5 +1,6 @@
 package com.kryeit.auth;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.kryeit.Config;
 import com.kryeit.Database;
 import io.javalin.http.Context;
@@ -210,8 +211,12 @@ public class LoginApi {
         if (token == null) {
             throw new UnauthorizedResponse();
         }
-
-        UUID uuid = Jwt.validateToken(token);
+        UUID uuid;
+        try {
+            uuid = Jwt.validateToken(token);
+        } catch (JWTVerificationException e) {
+            throw new UnauthorizedResponse();
+        }
 
         if (uuid == null) {
             throw new UnauthorizedResponse();

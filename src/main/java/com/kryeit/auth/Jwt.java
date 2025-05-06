@@ -27,23 +27,20 @@ public class Jwt {
         return token.sign(algorithm);
     }
 
-    public static UUID validateToken(String token) {
+    public static UUID validateToken(String token) throws JWTVerificationException {
         if (token == null) return null;
-        try {
-            JWTVerifier verifier = JWT.require(algorithm).build();
-            DecodedJWT jwt = verifier.verify(token);
 
-            if (jwt.getClaim("uuid").asString() == null) {
-                return null;
-            }
+        JWTVerifier verifier = JWT.require(algorithm).build();
+        DecodedJWT jwt = verifier.verify(token);
 
-            if (jwt.getExpiresAt().before(new Date())) {
-                throw new UnauthorizedResponse("Token has expired");
-            }
-
-            return UUID.fromString(jwt.getClaim("uuid").asString());
-        } catch (JWTVerificationException e) {
-            throw new UnauthorizedResponse("Invalid token");
+        if (jwt.getClaim("uuid").asString() == null) {
+            return null;
         }
+
+        if (jwt.getExpiresAt().before(new Date())) {
+            throw new UnauthorizedResponse("Token has expired");
+        }
+
+        return UUID.fromString(jwt.getClaim("uuid").asString());
     }
 }

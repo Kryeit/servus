@@ -17,10 +17,13 @@ import org.jdbi.v3.core.mapper.ColumnMapper;
 import org.jdbi.v3.core.mapper.reflect.ConstructorMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.jackson2.Jackson2Plugin;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.sql.Array;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 
 
@@ -41,12 +44,34 @@ public class Database {
         JDBI.registerRowMapper(ConstructorMapper.factory(Product.class));
         JDBI.registerRowMapper(ConstructorMapper.factory(Stock.class));
 
-        JDBI.registerRowMapper(ConstructorMapper.factory(CosmeticApi.CosmeticData.class));
-        JDBI.registerRowMapper(ConstructorMapper.factory(CosmeticApi.WardrobeItem.class));
-        JDBI.registerRowMapper(ConstructorMapper.factory(CosmeticApi.EquippedCosmeticsEntry.class));
+        //JDBI.registerRowMapper(ConstructorMapper.factory(CosmeticApi.CosmeticData.class));
+        //        JDBI.registerRowMapper(ConstructorMapper.factory(CosmeticApi.WardrobeItem.class));
+        //        JDBI.registerRowMapper(ConstructorMapper.factory(CosmeticApi.EquippedCosmeticsEntry.class));
+        JDBI.registerRowMapper(ConstructorMapper.factory(Admin.class));
+        JDBI.registerColumnMapper(Long[].class, new ColumnMapper<Long[]>() {
+            @Override
+            public Long[] map(ResultSet rs, int columnNumber, StatementContext ctx) throws SQLException {
+                Array sqlArray = rs.getArray(columnNumber);
+                if (sqlArray == null) {
+                    return new Long[0];
+                }
 
-        JDBI.registerRowMapper(ConstructorMapper.factory(Admin.Data.class));
+                Object[] array = (Object[]) sqlArray.getArray();
+                Long[] result = new Long[array.length];
 
+                for (int i = 0; i < array.length; i++) {
+                    if (array[i] != null) {
+                        if (array[i] instanceof Number) {
+                            result[i] = ((Number) array[i]).longValue();
+                        } else {
+                            result[i] = Long.parseLong(array[i].toString());
+                        }
+                    }
+                }
+
+                return result;
+            }
+        });
         JDBI.registerColumnMapper(JsonObject.class, new JsonObjectMapper());
         DatabaseUtils.createTables();
 

@@ -83,10 +83,6 @@ public class StockApi {
      */
     public static void getStock(Context ctx) {
         String product = ctx.pathParam("id");
-        if (product.equals("[object Object]") || product.equals("undefined")) {
-            ctx.status(400).result("Invalid product ID");
-            return;
-        }
         long productId = Long.parseLong(product);
 
         Stock stock = Database.getJdbi().withHandle(handle -> handle.createQuery("""

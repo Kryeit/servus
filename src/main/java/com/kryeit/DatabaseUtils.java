@@ -26,16 +26,16 @@ public class DatabaseUtils {
                     size VARCHAR(50),
                     color VARCHAR(50),
                     material VARCHAR(100),
-                    virtual BOOLEAN NOT NULL,
-                    listed BOOLEAN NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    virtual BOOLEAN NOT NULL DEFAULT FALSE,
+                    listed BOOLEAN NOT NULL DEFAULT FALSE,
+                    creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    edition TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """);
 
             // Create stock table
             handle.execute("""
-                CREATE TABLE IF NOT EXISTS stock (
+                CREATE TABLE IF NOT EXISTS stocks (
                     id BIGSERIAL PRIMARY KEY,
                     product_id BIGINT NOT NULL REFERENCES products(id),
                     quantity BIGINT NOT NULL,
@@ -43,18 +43,19 @@ public class DatabaseUtils {
                 )
             """);
 
-            // Create orders table
+            // Create orders table with cart as BIGINT[]
             handle.execute("""
                 CREATE TABLE IF NOT EXISTS orders (
                     id BIGSERIAL PRIMARY KEY,
-                    uuid UUID NOT NULL,
-                    cart JSONB NOT NULL,
+                    uuid UUID,
+                    cart BIGINT[] NOT NULL,
                     destination VARCHAR(255) NOT NULL,
                     phone VARCHAR(50),
-                    email VARCHAR(255),
+                    email VARCHAR(255) NOT NULL,
                     status VARCHAR(50) NOT NULL,
                     transaction VARCHAR(255),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    edition TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """);
 

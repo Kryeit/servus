@@ -1,6 +1,8 @@
 package com.kryeit.panel.auth;
 
 import com.kryeit.Database;
+import com.kryeit.auth.Jwt;
+import com.kryeit.auth.User;
 import io.javalin.http.Context;
 import io.javalin.http.UnauthorizedResponse;
 import org.json.JSONObject;
@@ -27,37 +29,25 @@ public class AdminLoginApi {
         String username = body.getString("username");
         String password = body.getString("password");
 
-        String storedPasswordHash = Database.getJdbi().withHandle(handle ->
-                handle.createQuery("SELECT password FROM admins WHERE username = :username")
+        Admin user = Database.getJdbi().withHandle(handle ->
+                handle.createQuery("SELECT * FROM admins WHERE username = :username")
                         .bind("username", username)
-                        .mapTo(String.class)
+                        .mapTo(Admin.class)
                         .findOne()
                         .orElse(null)
         );
 
-        if (storedPasswordHash != null && BCrypt.checkpw(password, storedPasswordHash)) {
-            long adminId = Database.getJdbi().withHandle(handle ->
-                    handle.createQuery("SELECT id FROM admins WHERE username = :username")
-                            .bind("username", username)
-                            .mapTo(Long.class)
-                            .findOne()
-                            .orElse(-1L)
-            );
-
-            if (adminId == -1) {
-                ctx.status(401).result("Invalid username or password.");
-                return;
-            }
-
-            String token = AdminJwt.generateToken(adminId);
+        if (user != null && BCrypt.checkpw(password, user.password())) {
+            String token = AdminJwt.generateToken(user.id());
             Map<String, String> response = new HashMap<>();
             response.put("token", token);
-            response.put("username", username);
+            response.put("username", user.username());
             ctx.status(200).json(response);
         } else {
             ctx.status(401).result("Invalid username or password.");
         }
     }
+
 
     /**
      * HTTP POST Request to /api/register
@@ -75,27 +65,33 @@ public class AdminLoginApi {
         String username = body.getString("username");
         String password = body.getString("password");
 
-        long adminCount = Database.getJdbi().withHandle(handle ->
-                handle.createQuery("SELECT COUNT(*) FROM admins")
-                        .mapTo(Long.class)
-                        .one()
+        Admin user = Database.getJdbi().withHandle(handle ->
+                handle.createQuery("SELECT * FROM admins")
+                        .mapTo(Admin.class)
+                        .findOne()
+                        .orElse(null)
         );
 
-        if (adminCount > 0) {
-            ctx.status(404);
+        if (user != null) {
+            ctx.status(400).result("heh.");
             return;
         }
 
-        String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+        try {
+            String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
 
-        Database.getJdbi().useHandle(handle ->
-                handle.createUpdate("INSERT INTO admins (username, password) VALUES (:username, :password)")
-                        .bind("username", username)
-                        .bind("password", hashedPassword)
-                        .execute()
-        );
+            Database.getJdbi().withHandle(handle ->
+                    handle.createUpdate("INSERT INTO admins (username, password) VALUES (:username, :password)")
+                            .bind("username", username)
+                            .bind("password", hashedPassword)
+                            .execute()
+            );
 
-        ctx.status(201).result("Admin registered successfully.");
+            ctx.status(200).result("User registered successfully.");
+
+        } catch (Exception e) {
+            ctx.status(500).result("Registration failed due to internal error.");
+        }
     }
 
     /**
@@ -104,8 +100,9 @@ public class AdminLoginApi {
      *
      * @param ctx the Javalin HTTP context
      */
-    public static void validateToken(Context ctx) {
+    public static void validate(Context ctx) {
         String token = ctx.cookie("auth");
+
         if (token == null) {
             throw new UnauthorizedResponse();
         }
@@ -116,18 +113,18 @@ public class AdminLoginApi {
             throw new UnauthorizedResponse();
         }
 
-        Admin.Data admin = Database.getJdbi().withHandle(handle -> handle.createQuery("""
-                        SELECT id, username
-                        FROM admins
-                        WHERE id = :id
-                        """)
+        Map<String, Object> data = Database.getJdbi().withHandle(handle -> handle.createQuery("""
+            SELECT id, username
+            FROM admins
+            WHERE id = :id
+            """)
                 .bind("id", id)
-                .mapTo(Admin.Data.class)
+                .mapToMap()
                 .one());
 
         ctx.json(Map.of(
-                "id", id,
-                "username", admin.username()
+                "id", data.get("id"),
+                "username", data.get("username")
         ));
     }
 }

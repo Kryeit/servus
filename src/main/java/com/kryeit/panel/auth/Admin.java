@@ -1,39 +1,33 @@
 package com.kryeit.panel.auth;
 
 import com.kryeit.Database;
+import com.kryeit.auth.Jwt;
+import com.kryeit.auth.User;
+import io.javalin.http.Context;
 
-public class Admin {
-    private final long id;
-    private Data data;
+import java.util.Optional;
+import java.util.UUID;
 
-    private Admin(long id, Data data) {
-        this.id = id;
-        this.data = data;
-    }
+public record Admin(long id, String username, String password) {
 
-    public Data data() {
-        if (data == null) {
-            data = getData();
+    public static Optional<Admin> fromRequest(Context ctx) {
+        String cookie = ctx.cookie("auth");
+        if (cookie == null) {
+            return Optional.empty();
         }
-        return data;
-    }
 
-    public long id() {
-        return id;
-    }
+        // Read the token and process it
+        long userId = AdminJwt.validateToken(cookie);
 
-
-    private Data getData() {
-        return Database.getJdbi().withHandle(h -> h.createQuery("""
-                        SELECT username, password
+        Admin admin = Database.getJdbi().withHandle(h -> h.createQuery("""
+                        SELECT *
                         FROM admins
                         WHERE id = :id
                         """)
-                .bind("id", id)
-                .mapTo(Data.class)
+                .bind("id", userId)
+                .mapTo(Admin.class)
                 .first());
-    }
 
-    public record Data(String username, String password) {
+        return Optional.of(admin);
     }
 }

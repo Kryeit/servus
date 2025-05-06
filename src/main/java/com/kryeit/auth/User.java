@@ -1,5 +1,6 @@
 package com.kryeit.auth;
 
+import com.google.gson.JsonObject;
 import com.kryeit.Database;
 import io.javalin.http.Context;
 import org.json.JSONObject;
@@ -45,14 +46,14 @@ public class User {
         return Database.getJdbi().withHandle(h -> h.createQuery("""
                         SELECT username, creation, last_seen, roles, stats
                         FROM users
-                        WHERE uuid = :uuid
+                        WHERE uuid = cast(:uuid as uuid)
                         """)
                 .bind("uuid", uuid)
                 .mapTo(Data.class)
                 .first());
     }
 
-    public record Data(String username, Timestamp creation, Timestamp lastSeen, List<Role> roles, JSONObject stats) {
+    public record Data(String username, Timestamp creation, Timestamp lastSeen, List<Role> roles, JsonObject stats) {
     }
 
     public enum Role {

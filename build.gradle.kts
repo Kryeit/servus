@@ -1,6 +1,7 @@
 plugins {
     id("java")
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.0+"
+    id("application")
 }
 
 group = "com.kryeit"
@@ -39,10 +40,22 @@ tasks {
     }
 }
 
+sourceSets {
+    main {
+        resources {
+            srcDirs("src/main/resources")
+        }
+    }
+}
+
 tasks.jar {
     manifest {
         attributes("Main-Class" to "com.kryeit.Main")
     }
+}
+
+application {
+    mainClass.set("com.kryeit.Main")
 }
 
 tasks.test {

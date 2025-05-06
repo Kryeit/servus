@@ -3,7 +3,6 @@ package com.kryeit.merch;
 import com.kryeit.Database;
 import com.kryeit.storage.ProductImages;
 import io.javalin.http.Context;
-import org.json.JSONObject;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -23,8 +22,9 @@ public class ProductStructureApi {
      * @param ctx the Javalin HTTP context
      */
     public static void getProductCatalog(Context ctx) {
+        // Fetch all listed products
         List<Product> allProducts = Database.getJdbi().withHandle(handle -> handle.createQuery("""
-            SELECT id, name, description, price, size, color, material, virtual, listed, created_at, updated_at
+            SELECT id, name, description, price, size, color, material, virtual, listed, creation, edition
             FROM products
             WHERE listed = true
             ORDER BY name
@@ -32,6 +32,7 @@ public class ProductStructureApi {
                 .mapTo(Product.class)
                 .list());
 
+        // Group by product name
         Map<String, List<Product>> productsByName = allProducts.stream()
                 .collect(Collectors.groupingBy(Product::name));
 
@@ -40,17 +41,31 @@ public class ProductStructureApi {
         for (Map.Entry<String, List<Product>> entry : productsByName.entrySet()) {
             String productName = entry.getKey();
             List<Product> variants = entry.getValue();
-
             Product firstVariant = variants.get(0);
 
-            Map<String, List<Product>> variantsByColor = variants.stream()
-                    .collect(Collectors.groupingBy(Product::color));
+            // If any variant has a null color, collapse all into a single group
+            boolean hasNullColor = variants.stream().anyMatch(p -> p.color() == null);
+            Map<String, List<Product>> variantsByColor;
+            if (hasNullColor) {
+                variantsByColor = new HashMap<>();
+                variantsByColor.put("default", variants);
+            } else {
+                variantsByColor = variants.stream()
+                        .collect(Collectors.groupingBy(Product::color));
+            }
 
             List<Map<String, Object>> colorVariants = new ArrayList<>();
             for (Map.Entry<String, List<Product>> colorEntry : variantsByColor.entrySet()) {
-                String color = colorEntry.getKey();
+                String colorKey = colorEntry.getKey();
                 List<Product> colorProducts = colorEntry.getValue();
 
+                // Use null for output if using the default group
+                String outputColor = "default".equals(colorKey) ? null : colorKey;
+                String colorCode = (outputColor != null && outputColor.startsWith("#"))
+                        ? outputColor.substring(1)
+                        : outputColor;
+
+                // Total stock for this color group
                 List<Long> productIds = colorProducts.stream()
                         .map(Product::id)
                         .collect(Collectors.toList());
@@ -66,6 +81,7 @@ public class ProductStructureApi {
                                 .one()
                 );
 
+                // Images for the product
                 List<String> images;
                 try {
                     images = ProductImages.getImages(productName);
@@ -73,9 +89,9 @@ public class ProductStructureApi {
                     images = new ArrayList<>();
                 }
 
+                // Size variants
                 List<Map<String, Object>> sizeVariants = new ArrayList<>();
                 List<String> sizeOrder = List.of("XS", "S", "M", "L", "XL", "XXL");
-
                 for (Product p : colorProducts) {
                     int stock = Database.getJdbi().withHandle(handle ->
                             handle.createQuery("""
@@ -87,14 +103,13 @@ public class ProductStructureApi {
                                     .mapTo(Integer.class)
                                     .one()
                     );
-
                     Map<String, Object> sizeVariant = new HashMap<>();
                     sizeVariant.put("id", p.id());
                     sizeVariant.put("size", p.size());
                     sizeVariant.put("stock", stock);
                     sizeVariants.add(sizeVariant);
                 }
-
+                // Sort sizes
                 sizeVariants.sort((a, b) -> {
                     String sizeA = (String) a.get("size");
                     String sizeB = (String) b.get("size");
@@ -104,8 +119,8 @@ public class ProductStructureApi {
                 });
 
                 Map<String, Object> colorVariant = new HashMap<>();
-                colorVariant.put("color", color);
-                colorVariant.put("colorCode", color.startsWith("#") ? color.substring(1) : color);
+                colorVariant.put("color", outputColor);
+                colorVariant.put("colorCode", colorCode);
                 colorVariant.put("stock", totalStock);
                 colorVariant.put("sizes", sizeVariants);
                 colorVariant.put("images", images);
@@ -134,7 +149,6 @@ public class ProductStructureApi {
      */
     public static void getProductDetails(Context ctx) {
         String productName = ctx.queryParam("name");
-
         if (productName == null) {
             ctx.status(400).result("Product name is required");
             return;
@@ -142,7 +156,7 @@ public class ProductStructureApi {
 
         // Get all variants of the product
         List<Product> variants = Database.getJdbi().withHandle(handle -> handle.createQuery("""
-            SELECT id, name, description, price, size, color, material, virtual, listed, created_at, updated_at
+            SELECT id, name, description, price, size, color, material, virtual, listed, creation, edition
             FROM products
             WHERE name = :name
             """)
@@ -155,24 +169,32 @@ public class ProductStructureApi {
             return;
         }
 
-        // Group variants by color
-        Map<String, List<Product>> variantsByColor = variants.stream()
-                .collect(Collectors.groupingBy(Product::color));
+        // If any variant has a null color, collapse all into one group
+        boolean hasNullColor = variants.stream().anyMatch(p -> p.color() == null);
+        Map<String, List<Product>> variantsByColor;
+        if (hasNullColor) {
+            variantsByColor = new HashMap<>();
+            variantsByColor.put("default", variants);
+        } else {
+            variantsByColor = variants.stream()
+                    .collect(Collectors.groupingBy(Product::color));
+        }
 
-        // Get first variant for common details
         Product firstVariant = variants.get(0);
-
-        // Create color variants with available sizes
         List<Map<String, Object>> colorVariants = new ArrayList<>();
         for (Map.Entry<String, List<Product>> entry : variantsByColor.entrySet()) {
-            String color = entry.getKey();
+            String colorKey = entry.getKey();
             List<Product> colorProducts = entry.getValue();
 
-            // Get stock for this color
+            String outputColor = "default".equals(colorKey) ? null : colorKey;
+            String colorCode = (outputColor != null && outputColor.startsWith("#"))
+                    ? outputColor.substring(1)
+                    : outputColor;
+
+            // Total stock
             List<Long> productIds = colorProducts.stream()
                     .map(Product::id)
                     .collect(Collectors.toList());
-
             int totalStock = Database.getJdbi().withHandle(handle ->
                     handle.createQuery("""
                     SELECT COALESCE(SUM(quantity), 0)
@@ -184,7 +206,7 @@ public class ProductStructureApi {
                             .one()
             );
 
-            // Get images
+            // Images
             List<String> images;
             try {
                 images = ProductImages.getImages(productName);
@@ -192,12 +214,10 @@ public class ProductStructureApi {
                 images = new ArrayList<>();
             }
 
-            // Create size variants
+            // Size variants with discounts
             List<Map<String, Object>> sizeVariants = new ArrayList<>();
             List<String> sizeOrder = List.of("XS", "S", "M", "L", "XL", "XXL");
-
             for (Product p : colorProducts) {
-                // Get stock for this specific size/color
                 int stock = Database.getJdbi().withHandle(handle ->
                         handle.createQuery("""
                         SELECT COALESCE(quantity, 0)
@@ -208,8 +228,6 @@ public class ProductStructureApi {
                                 .mapTo(Integer.class)
                                 .one()
                 );
-
-                // Get discount for this specific product
                 double discount = Database.getJdbi().withHandle(handle ->
                         handle.createQuery("""
                         SELECT COALESCE(discount, 0)
@@ -220,7 +238,6 @@ public class ProductStructureApi {
                                 .mapTo(Double.class)
                                 .one()
                 );
-
                 Map<String, Object> sizeVariant = new HashMap<>();
                 sizeVariant.put("id", p.id());
                 sizeVariant.put("size", p.size());
@@ -228,8 +245,6 @@ public class ProductStructureApi {
                 sizeVariant.put("discount", discount);
                 sizeVariants.add(sizeVariant);
             }
-
-            // Sort by size
             sizeVariants.sort((a, b) -> {
                 String sizeA = (String) a.get("size");
                 String sizeB = (String) b.get("size");
@@ -239,15 +254,14 @@ public class ProductStructureApi {
             });
 
             Map<String, Object> colorVariant = new HashMap<>();
-            colorVariant.put("color", color);
-            colorVariant.put("colorCode", color.startsWith("#") ? color.substring(1) : color);
+            colorVariant.put("color", outputColor);
+            colorVariant.put("colorCode", colorCode);
             colorVariant.put("stock", totalStock);
             colorVariant.put("sizes", sizeVariants);
             colorVariant.put("images", images);
             colorVariants.add(colorVariant);
         }
 
-        // Create product details
         Map<String, Object> productDetails = new HashMap<>();
         productDetails.put("name", productName);
         productDetails.put("description", firstVariant.description());
